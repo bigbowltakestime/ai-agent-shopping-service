@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply m-0 flex min-h-screen min-w-[320px] place-items-center justify-center text-center;
+  }
+
+  h1 {
+    @apply text-4xl font-bold leading-heading;
+  }
+
+  a {
+    @apply font-medium text-primary hover:text-primary-hover;
+  }
+
+  button {
+    @apply cursor-pointer rounded-lg border border-transparent bg-button px-6 py-3 text-base font-medium transition-colors hover:border-primary focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary;
+  }
+}
+
+/* Speech bubble styles */
+.speech-bubble-user::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 16px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid #3B82F6;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.speech-bubble-agent::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 16px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid #E5E7EB;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
