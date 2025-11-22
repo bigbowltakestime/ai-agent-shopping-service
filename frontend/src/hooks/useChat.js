@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 
 const mockProducts = [
-  { id: 1, name: 'Premium Shampoo for Oily Hair', price: 2999, rating: 4.5, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
-  { id: 2, name: 'Gentle Conditioner', price: 1999, rating: 4.2, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
-  { id: 3, name: 'Natural Hair Mask', price: 3999, rating: 4.8, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
-  { id: 4, name: 'Scalp Treatment Serum', price: 2499, rating: 4.3, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
-  { id: 5, name: 'Hair Growth Supplement', price: 3499, rating: 4.6, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
-  { id: 6, name: 'Anti-Dandruff Shampoo', price: 2299, rating: 4.4, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#' },
+  { id: 1, name: 'Premium Shampoo for Oily Hair', price: 2999, rating: 4.5, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 1 },
+  { id: 2, name: 'Gentle Conditioner', price: 1999, rating: 4.2, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 2 },
+  { id: 3, name: 'Natural Hair Mask', price: 3999, rating: 4.8, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 3 },
+  { id: 4, name: 'Scalp Treatment Serum', price: 2499, rating: 4.3, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 4 },
+  { id: 5, name: 'Hair Growth Supplement', price: 3499, rating: 4.6, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 5 },
+  { id: 6, name: 'Anti-Dandruff Shampoo', price: 2299, rating: 4.4, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 6 },
 ];
 
 const mockReviewProduct = [

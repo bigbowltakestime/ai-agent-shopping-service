@@ -45,8 +45,15 @@ const ProductDisplay = ({ products, type }) => {
 
 // Product item sub-component
 const ProductItem = ({ product }) => {
+
   return (
-    <div className="border border-gray-200 rounded p-3 flex flex-col bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => window.open(product.detailLink, '_blank')}>
+    <div className="border border-gray-200 rounded p-3 flex flex-col bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors relative" onClick={() => window.open(product.detailLink, '_blank')}>
+      {product.rank && (
+        <div className="absolute top-0 left-0 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-lg z-10">
+          #{product.rank}
+        </div>
+      )}
+      {/* Debug: {JSON.stringify(product)} */}
       <img
         src={product.image || '/placeholder-image.svg'}
         alt={product.name}
