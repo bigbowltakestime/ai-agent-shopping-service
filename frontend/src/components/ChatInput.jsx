@@ -20,7 +20,7 @@ const ChatInput = ({ onSubmit, isLoading }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="flex-1 border border-gray-300 rounded px-3 py-2 mr-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Type your message..."
+          placeholder="쇼핑 에이전트에게 물어보세요"
           disabled={isLoading}
         />
         <button
