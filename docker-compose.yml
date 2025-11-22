@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      args:
+        NODE_VERSION: '18-alpine'
+        DATABASE_URL: ./data/database.db
+        LANCEDB_URI: ./data/lancedb
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=./data/database.db
+      - LANCEDB_URI=./data/lancedb
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # Optional: Database volumes for persistence
+  # If using PostgreSQL or other DB, add service here
+
+# volumes:
+#   db_data:
+#     driver: local
