@@ -40,6 +40,7 @@ sequenceDiagram
 핵심 코드 디렉토리:
 AI 에이전트: backend/src/agent
 Web-crawler: web_crawler/core
+크롤링한 데이터: web_crawler/output/products.csv
 
 ---
 
