@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,7 +37,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve React static files
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Error handling
 const { errorHandler } = require('./utils/errorHandler');
@@ -44,14 +45,16 @@ const { errorHandler } = require('./utils/errorHandler');
 ///Enhan cd d err handling middlrwahemiddleware
 app.use(errorHandler);
 
+const chatRouter = require('./routes/chat');
+
 // Routes
 app.use('/health', require('./routes/health'));
-// app.use('/chat', require('./routes/chat')); // Disabled until agents are ready
+app.use('/chat', chatRouter);
 
 // SPA catch-all handler
 app.use((req, res) => {
   const path = require('path');
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 // API 404 handler (only for /api routes)
 app.use('/api', (req, res) => {
