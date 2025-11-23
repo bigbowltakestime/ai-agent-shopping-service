@@ -67,7 +67,7 @@ const defaultMessages = [
     type: 'suggested',
     id: 2,
     suggestions: [
-      { displayMessage: '다음 랭킹 이어서 보기', message: '랭킹 7위부터 13위 보여줘' },
+      { displayMessage: '다음 랭킹 이어서 보기', message: '스킨케어 랭킹 7위부터 13위 보여줘' },
       { displayMessage: '6번 제품 리뷰 보기', message: '6번 제품 리뷰 알려줘' },
     ],
     timestamp: new Date().toString()

@@ -18,7 +18,7 @@ class LangChainService {
       // Initialize Chat Model (GPT-4)
       chatModel = new ChatOpenAI({
         openAIApiKey: config.OPENAI_API_KEY,
-        modelName: 'gpt-4o-mini',
+        modelName: 'gpt-5',
         temperature: 1, // Low temperature for more deterministic responses
         maxTokens: 2000, // Limit response length
         maxRetries: 3,
