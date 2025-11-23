@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import MessageItem from './MessageItem.jsx';
 import ProductDisplay from './ProductDisplay.jsx';
 import SuggestedMessage from './SuggestedMessage.jsx';
+import LoadingIndicator from './LoadingIndicator.jsx';
 
 const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
   const messagesEndRef = useRef(null);
@@ -30,7 +31,7 @@ const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
   // Hide suggested if user has sent message after the last suggested
   if (lastSuggested) {
     const lastSuggestedIndex = messages.findIndex(m => m === lastSuggested);
-    const lastUserIndex = messages.findLastIndex(m => m.type === 'chatmessage' && m.role === 'user');
+    const lastUserIndex = messages.findLastIndex(m => m.type === 'chatMessage' && m.role === 'user');
     if (lastUserIndex > lastSuggestedIndex) {
       lastSuggested = null;
     }
@@ -39,7 +40,7 @@ const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
   return (
     <div className="space-y-3">
       {visibleMessages.map(msg => {
-        if (msg.type === 'chatmessage') {
+        if (msg.type === 'chatMessage') {
           return <MessageItem key={msg.id} message={msg} />;
         } else if (msg.type === 'product') {
           return <ProductDisplay key={msg.id} products={msg.products} type={msg.displayType} />;
@@ -48,7 +49,7 @@ const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
         }
         return null;
       })}
-      {isLoading && processMessage && <div className="text-center text-yellow-600 text-sm italic">{processMessage}</div>}
+      {isLoading && processMessage && <LoadingIndicator message={processMessage} />}
       {lastSuggested && (
         <SuggestedMessage
           suggestions={lastSuggested.suggestions}
