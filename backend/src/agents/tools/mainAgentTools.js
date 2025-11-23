@@ -1,7 +1,8 @@
 // Main Agent Tools
 const { tool } = require('@langchain/core/tools');
 const ProductAgent = require('../productAgent');
-
+const { LangGraphRunnableConfig } = require("@langchain/langgraph");
+const { v4: uuidv4 } = require('uuid');
 // ----------------------------
 // Example Data
 // ----------------------------
@@ -10,20 +11,6 @@ const PRODUCTS_EXAMPLE = [
   { id: 2, name: 'Gentle Conditioner', price: 1999, rating: 4.2, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 2 },
   { id: 3, name: 'Natural Hair Mask', price: 3999, rating: 4.8, image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg', detailLink: '#', rank: 3 },
 ];
-
-const REVIEWS_EXAMPLE = [
-  {
-    id: 1,
-    name: 'Premium Shampoo for Oily Hair',
-    price: 2999,
-    image: 'https://mocheong-ai.s3.ap-southeast-2.amazonaws.com/A000000130138.jpg',
-    reviews: [
-      { text: 'This shampoo really controls oil without drying my scalp!', sentiment: 'Positive', features: ['oil control', 'not drying'] },
-      { text: 'Great scent and lathers well. Highly recommend.', sentiment: 'Positive', features: ['scent', 'lathering'] }
-    ]
-  }
-];
-
 // ----------------------------
 // Example Messages
 // ----------------------------
@@ -45,7 +32,18 @@ const MESSAGE_EXAMPLES = {
   review: {
     id: 4,
     type: 'product',
-    products: REVIEWS_EXAMPLE,
+    products: [
+      {
+        id: 1,
+        name: 'Premium Shampoo for Oily Hair',
+        price: 2999,
+        image: '',
+        reviews: [
+          { text: 'This shampoo really controls oil without drying my scalp!', sentiment: 'Positive', features: ['oil control', 'not drying'] },
+          { text: 'Great scent and lathers well. Highly recommend.', sentiment: 'Positive', features: ['scent', 'lathering'] }
+        ]
+      }
+    ],
     displayType: 'review',
     timestamp: new Date()
   },
@@ -54,8 +52,8 @@ const MESSAGE_EXAMPLES = {
     type: 'suggested',
     suggestions: [
       { displayMessage: '스킨케어 추천', message: '스킨케어 제품 추천해줘' },
-      { displayMessage: '메이크업 정보', message: '메이크업 제품 정보 알려줘' },
-      { displayMessage: '헤어 케어 팁', message: '헤어 케어 방법을 알려줘' }
+      { displayMessage: '인기 제품 추천', message: '인기 제품 정보 알려줘' },
+      { displayMessage: '6번 제품 리뷰', message: '6번 제품 리뷰 알려줘' }
     ],
     timestamp: new Date()
   },
@@ -89,16 +87,45 @@ function loadMessageTypeTemplates() {
   };
 }
 
+function makeLoadingMessage(msg) {
+  return {
+    id: uuidv4().toString(),
+    type: 'loading',
+    content: msg
+  };
+}
+
 // ----------------------------
 // Tools
 // ----------------------------
 const callProductAgentTool = tool(
-  async ({ command }) => {
+  async ({ command }, config) => {
     console.log(`[MainAgent] Calling product agent with command: "${command}"`);
+
+    const writer = config?.writer;
+
+    console.log(`[MainAgent] writer: ${writer}`);
+    
+    if (writer) {
+      console.log(`[MainAgent] writer: try to send loading message`);
+      const loadingMessage = makeLoadingMessage(`상품 에이전트 생각중...: ${command}`);
+      console.log(`[MainAgent] Loading message: ${JSON.stringify(loadingMessage)}`);
+      writer(loadingMessage);
+      console.log(`[MainAgent] Loading message sent`);
+    }
+
+    
     try {
       const productAgent = new ProductAgent();
-      const result = await productAgent.execute({ command });
+      const result = await productAgent.execute({ command }, config);
       console.log(`[MainAgent] Product agent responded successfully`);
+      
+      if (writer) {
+        const successMessage = makeLoadingMessage(`상품 에이전트 작업 완료`);
+        console.log(`[MainAgent] Success message: ${JSON.stringify(successMessage)}`);
+        writer(successMessage);
+        console.log(`[MainAgent] Success message sent`);
+      }
       return { agent: 'product', response: result, success: true };
     } catch (error) {
       console.error('[MainAgent] Product agent call failed:', error);
@@ -122,11 +149,19 @@ const callProductAgentTool = tool(
 );
 
 const getMessageTemplateTool = tool(
-  async ({ messageType }) => {
+  async ({ messageType }, config) => {
     console.log(`[MainAgent] Getting message template for type: ${messageType}`);
+    const writer = config?.writer;
+    if (writer) {
+      console.log(`[MainAgent] writer: try to send loading message`);
+      const loadingMessage = makeLoadingMessage(`응답 템플릿 검색 중... ${messageType}`);
+      console.log(`[MainAgent] Loading message: ${JSON.stringify(loadingMessage)}`);
+      writer(loadingMessage);
+      console.log(`[MainAgent] Loading message sent`);
+    }
     try {
       const templates = loadMessageTypeTemplates();
-      const template = JSON.stringify(templates[messageType]);
+      const template = templates[messageType];
       if (!template) throw new Error('Invalid message type');
       return { messageType, template, success: true };
     } catch (error) {
@@ -148,20 +183,33 @@ const getMessageTemplateTool = tool(
 );
 
 const sendMessageTool = tool(
-  async ({ message }) => {
+  async ({ message }, config) => {
     try {
       if (!message || !message.type || !message.id) {
         throw new Error('Message must have at least `id` and `type` fields');
       }
 
-      console.log(`[MainAgent] Message sent: ${message.type}`);
+      if (message.type === 'product' && !message.displayType) {
+        message.displayType = 'Box2';
+      }
+
+      const { writer } = config || {};
+
+      if (writer) {
+        // Send structured message data via web socket
+        const sseMessage = message;
+        writer(sseMessage);
+        console.log(`[MainAgent] web socket Message sent: ${message.type}`);
+      } else {
+        console.log(`[MainAgent] Message sent: ${message.type} (no web socket stream available)`);
+      }
       console.log(`[MainAgent] Message Content: ${JSON.stringify(message)}`);
 
       return {
         messageId: message.id,
         type: message.type,
         success: true,
-        channel: 'sse'
+        channel: writer ? 'sse' : 'console'
       };
     } catch (error) {
       console.error('[MainAgent] Error sending message:', error);
@@ -176,10 +224,10 @@ const sendMessageTool = tool(
       properties: {
         message: {
           type: 'object',
-          description: 'The message object to send. Must include `id` and `type`. Other properties depend on message type.',
+          description: 'The message object to send. Must include `id` and `type`. Other properties depend on message type. review should select product type',
           properties: {
             id: { type: 'string' },
-            type: { type: 'string', enum: ['chatMessage', 'product', 'review', 'suggested', 'loading'] }
+            type: { type: 'string', enum: ['chatMessage', 'product', 'suggested', 'loading'] }
             // 나머지 필드는 동적이라 따로 명시하지 않음
           },
           required: ['id', 'type']
