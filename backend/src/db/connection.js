@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const config = require('../config/config');
@@ -7,98 +7,200 @@ let db;
 let retries = 5;
 
 function connect() {
-  try {
-    const dbPath = path.resolve(process.cwd(), config.DATABASE_URL);
-    const dbDir = path.dirname(dbPath);
+  return new Promise((resolve, reject) => {
+    try {
+      const dbPath = path.resolve(process.cwd(), config.DATABASE_URL);
+      const dbDir = path.dirname(dbPath);
 
-    // Ensure directory exists
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+      // Ensure directory exists
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+
+      db = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+          if (retries > 0) {
+            console.log(`Database connection failed, retrying... (${retries} attempts left)`);
+            retries--;
+            setTimeout(() => connect().then(resolve).catch(reject), 2000);
+          } else {
+            reject(new Error(`Failed to connect to database after multiple attempts: ${err.message}`));
+          }
+          return;
+        }
+
+        // Enable WAL mode for better concurrency
+        db.run('PRAGMA journal_mode = WAL', (err) => {
+          if (err) console.warn('Failed to set WAL mode:', err);
+
+          db.run('PRAGMA synchronous = NORMAL', (err) => {
+            if (err) console.warn('Failed to set synchronous mode:', err);
+
+            db.run('PRAGMA cache_size = -1000000', (err) => { // -1000000 = ~1GB cache (negative for KB)
+              if (err) console.warn('Failed to set cache size:', err);
+
+              db.run('PRAGMA temp_store = memory', (err) => {
+                if (err) console.warn('Failed to set temp store:', err);
+
+                console.log('Database connected successfully');
+                resolve(db);
+              });
+            });
+          });
+        });
+      });
+    } catch (error) {
+      reject(error);
     }
-
-    db = new Database(dbPath, {
-      verbose: config.NODE_ENV === 'development' ? console.log : null
-    });
-
-    // Enable WAL mode for better concurrency
-    db.pragma('journal_mode = WAL');
-    db.pragma('synchronous = NORMAL');
-    db.pragma('cache_size = 1000000000'); // 1GB cache
-    db.pragma('temp_store = memory');
-
-    console.log('Database connected successfully');
-    return db;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`Database connection failed, retrying... (${retries} attempts left)`);
-      retries--;
-      setTimeout(connect, 2000);
-    } else {
-      throw new Error(`Failed to connect to database after multiple attempts: ${error.message}`);
-    }
-  }
+  });
 }
 
 // Initialize connection
-connect();
+let dbPromise = connect();
+
+// Helper function to get database instance
+async function getDbConnection() {
+  if (!db) {
+    db = await dbPromise;
+  }
+  return db;
+}
 
 // CRUD Operations
 const operations = {
   // Execute a query
-  run: (query, params = []) => {
+  run: async (query, params = []) => {
     try {
-      return db.prepare(query).run(params);
+      const db = await getDbConnection();
+      return new Promise((resolve, reject) => {
+        db.run(query, params, function(err) {
+          if (err) {
+            console.error('Query execution error:', err);
+            reject(err);
+          } else {
+            resolve({
+              lastID: this.lastID,
+              changes: this.changes
+            });
+          }
+        });
+      });
     } catch (error) {
-      console.error('Query execution error:', error);
+      console.error('Database operation error:', error);
       throw error;
     }
   },
 
   // Get single row
-  get: (query, params = []) => {
+  get: async (query, params = []) => {
     try {
-      return db.prepare(query).get(params);
+      const db = await getDbConnection();
+      return new Promise((resolve, reject) => {
+        db.get(query, params, (err, row) => {
+          if (err) {
+            console.error('Query execution error:', err);
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
     } catch (error) {
-      console.error('Query execution error:', error);
+      console.error('Database operation error:', error);
       throw error;
     }
   },
 
   // Get all rows
-  all: (query, params = []) => {
+  all: async (query, params = []) => {
     try {
-      return db.prepare(query).all(params);
+      const db = await getDbConnection();
+      return new Promise((resolve, reject) => {
+        db.all(query, params, (err, rows) => {
+          if (err) {
+            console.error('Query execution error:', err);
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        });
+      });
     } catch (error) {
-      console.error('Query execution error:', error);
+      console.error('Database operation error:', error);
       throw error;
     }
   },
 
   // Execute multiple statements
-  exec: (sql) => {
+  exec: async (sql) => {
     try {
-      return db.exec(sql);
+      const db = await getDbConnection();
+      return new Promise((resolve, reject) => {
+        db.exec(sql, (err) => {
+          if (err) {
+            console.error('Exec error:', err);
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
     } catch (error) {
-      console.error('Exec error:', error);
+      console.error('Database operation error:', error);
       throw error;
     }
   },
 
   // Transaction wrapper
-  transaction: (fn) => {
-    try {
-      return db.transaction(fn)();
-    } catch (error) {
-      console.error('Transaction error:', error);
-      throw error;
-    }
+  transaction: async (fn) => {
+    const db = await getDbConnection();
+    return new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', (err) => {
+          if (err) {
+            console.error('Transaction begin error:', err);
+            reject(err);
+            return;
+          }
+
+          Promise.resolve(fn(operations))
+            .then((result) => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  console.error('Transaction commit error:', err);
+                  reject(err);
+                } else {
+                  resolve(result);
+                }
+              });
+            })
+            .catch((error) => {
+              console.error('Transaction execution error:', error);
+              db.run('ROLLBACK', (rollbackErr) => {
+                if (rollbackErr) {
+                  console.error('Transaction rollback error:', rollbackErr);
+                }
+                reject(error);
+              });
+            });
+        });
+      });
+    });
   },
 
   // Close connection
-  close: () => {
+  close: async () => {
     if (db) {
-      db.close();
-      console.log('Database connection closed');
+      return new Promise((resolve) => {
+        db.close((err) => {
+          if (err) {
+            console.error('Database close error:', err);
+          } else {
+            console.log('Database connection closed');
+          }
+          resolve();
+        });
+      });
     }
   }
 };

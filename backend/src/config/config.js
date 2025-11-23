@@ -16,7 +16,6 @@ const config = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   NODE_ENV: process.env.NODE_ENV || 'development',
   DATABASE_URL: process.env.DATABASE_URL || './data/database.db',
-  LANCEDB_URI: process.env.LANCEDB_URI || './data/lancedb'
 };
 
 module.exports = config;
