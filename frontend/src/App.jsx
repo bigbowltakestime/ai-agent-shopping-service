@@ -12,8 +12,8 @@ const App = () => {
       <div className="max-w-screen-sm mx-auto p-4">
         <Header onSubmit={handleHeaderSubmit} />
         <ChatArea messages={messages} onSubmit={handleChatSubmit} isLoading={isLoading} processMessage={processMessage} />
+        <ChatInput onSubmit={handleChatSubmit} isLoading={isLoading} />
       </div>
-      <ChatInput onSubmit={handleChatSubmit} isLoading={isLoading} />
     </div>
   );
 };

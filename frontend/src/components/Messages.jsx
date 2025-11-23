@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, } from 'react';
 import MessageItem from './MessageItem.jsx';
 import ProductDisplay from './ProductDisplay.jsx';
 import SuggestedMessage from './SuggestedMessage.jsx';
@@ -7,6 +7,8 @@ import LoadingIndicator from './LoadingIndicator.jsx';
 const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
   const messagesEndRef = useRef(null);
 
+  console.log("messages from messages.jsx", messages);
+
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -14,7 +16,10 @@ const Messages = ({ messages, isLoading, processMessage, onSubmit }) => {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const hasUserMessage = messages.some(msg => msg.type === 'chatMessage' && msg.role === 'user');
+    if (hasUserMessage) {
+      scrollToBottom();
+    }
   }, [messages, isLoading, processMessage]);
 
   // Filter to show only the last loading message

@@ -2,8 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Request logging
@@ -12,22 +15,13 @@ app.use(requestLoggerMiddleware);
 
 // CORS configuration
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    const allowedOrigins = [
-      'http://localhost:3000',  // Local development
-      'http://127.0.0.1:3000', // Alternative localhost
-      'http://localhost:3001' // Alternative localhost
-    ];
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'https://market.zynkimland.com',
+  ],
   credentials: true,
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
@@ -45,11 +39,12 @@ const { errorHandler } = require('./utils/errorHandler');
 ///Enhan cd d err handling middlrwahemiddleware
 app.use(errorHandler);
 
-const chatRouter = require('./routes/chat');
+// Socket.IO and chat handling
+const io = new Server(server, { cors: corsOptions });
+require('./routes/chat')(io);
 
 // Routes
 app.use('/health', require('./routes/health'));
-app.use('/chat', chatRouter);
 
 // SPA catch-all handler
 app.use((req, res) => {
@@ -72,8 +67,13 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  // Handle socket events here or pass to routes
+})
 
 module.exports = app;

@@ -13,7 +13,7 @@ const ChatInput = ({ onSubmit, isLoading }) => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3" style={{left: '50%', transform: 'translateX(-50%)', maxWidth: '480px'}}>
+    <div className="fixed w-full bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3" style={{left: '50%', transform: 'translateX(-50%)', maxWidth: '480px'}}>
       <form onSubmit={handleSubmit} className="flex">
         <input
           type="text"

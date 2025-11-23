@@ -1,127 +1,72 @@
-const express = require('express');
-const mainAgent = require('../agents/mainAgent');
-const { asyncHandler } = require('../utils/errorHandler');
+const MainAgent = require('../agents/mainAgent');
 const { validateMessage } = require('../utils/validation');
+const DBInterface = require('../services/dbInterface');
+const { v4: uuidv4 } = require('uuid');
 
-const router = express.Router();
+function makeLoadingMessage(msg) {
+  return {
+    id: uuidv4().toString(),
+    type: 'loading',
+    content: msg
+  };
+}
 
-// Store active streams for message handling
-const activeStreams = new Map();
+module.exports = (io) => {
+  io.on('connection', (socket) => {
+    console.log('User connected to chat:', socket.id);
+    // sendFirstMessage(socket);
 
-// GET /chat/stream - Establish SSE connection
-router.get('/stream', (req, res) => {
-  // Set SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', process.env.NODE_ENV === 'development' ? '*' : 'http://localhost:3000');
-  res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+    socket.on('chatMessage', async (data) => {
+      try {
+        const { message } = data;
 
-  // Generate a unique stream ID
-  const streamId = Date.now() + Math.random();
-  res.streamId = streamId;
+        console.log('Received chat message:', message);
 
-  // Add this stream to active streams
-  activeStreams.set(streamId, res);
-
-  // Send heartbeat every 30 seconds
-  const heartbeat = setInterval(() => {
-    if (res.destroyed) {
-      clearInterval(heartbeat);
-      return;
-    }
-    res.write(': heartbeat\n\n');
-  }, 30000);
-
-  // Clean up on client disconnect
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    activeStreams.delete(streamId);
-  });
-
-  // Keep connection alive
-  res.write(': Connected\n\n');
-});
-
-// POST /chat - Handle chat messages with agent workflow
-router.post('/', validateMessage, asyncHandler(async (req, res) => {
-  const { message } = req.body;
-
-  try {
-    // Find an active stream to send responses to
-    // In a real app, you'd associate streams with user sessions
-    // For now, send to the most recently opened stream
-    const lastStreamId = Array.from(activeStreams.keys()).pop();
-    if (!lastStreamId || !activeStreams.has(lastStreamId)) {
-      return res.status(400).json({ error: 'No active SSE stream found' });
-    }
-
-    const streamRes = activeStreams.get(lastStreamId);
-
-    // Send initial process messages for workflow stages
-    const sendProcessMessage = (message) => {
-      if (streamRes.destroyed) return;
-      streamRes.write(`data: ${JSON.stringify({
-        event: 'process',
-        data: {
-          type: 'process',
-          message,
-          timestamp: new Date().toISOString()
+        // Validate message (you might want to adapt validateMessage for socket)
+        if (!message || typeof message !== 'string' || message.length > 1000) {
+          socket.emit('error', { message: 'Invalid message' });
+          return;
         }
-      })}\n\n`);
-    };
 
-    const sendMessage = (message) => {
-      if (streamRes.destroyed) return;
-      streamRes.write(message);
-    };
+        // Create writer function that tools can use to send progress messages
+        const writer = (message) => {
+          console.log('Sending loading message:', message);
+          socket.emit('response', {
+            type: 'response',
+            data: message
+          });
+        };
 
-    // Emit thinking message
-    sendProcessMessage('Thinking...');
-    await new Promise(resolve => setTimeout(resolve, 200));
+        writer(makeLoadingMessage('쇼핑 에이전트 생각중...'));
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Emit query analysis
-    sendProcessMessage('Analyzing query...');
-    await new Promise(resolve => setTimeout(resolve, 300));
+        writer(makeLoadingMessage('쇼핑 에이전트 분석중...'));
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-    // const agentResponse = await mainAgent.invoke({ userQuery: message });
+        const mainAgent = new MainAgent();
+        await mainAgent.initialize();
 
-    // Close the stream after sending all data
-    setTimeout(() => {
-      if (!streamRes.destroyed) {
-        streamRes.write('event: end\ndata: Stream ended\n\n');
-        streamRes.end();
-        activeStreams.delete(lastStreamId);
-      }
-    }, 100);
+        // Execute agent with writer config
+        const userQuery = {
+          query: message
+        };
 
-    res.json({ success: true, message: 'Message sent successfully' });
+        const agentResponse = await mainAgent.execute(userQuery, { writer });
 
-  } catch (error) {
-    console.error('[Chat] Error processing message:', error);
+        // Send final response
+        socket.emit('response', agentResponse);
 
-    // Try to send error through SSE if possible
-    const lastStreamId = Array.from(activeStreams.keys()).pop();
-    const streamRes = lastStreamId ? activeStreams.get(lastStreamId) : null;
-
-    if (streamRes && !streamRes.destroyed) {
-      streamRes.write(`data: ${JSON.stringify({
-        event: 'error',
-        data: {
-          type: 'error',
+      } catch (error) {
+        console.error('[Chat] Error processing message:', error);
+        socket.emit('error', {
           message: 'An error occurred while processing your request. Please try again.',
-          timestamp: new Date().toISOString()
-        }
-      })}\n\n`);
-      streamRes.end();
-      activeStreams.delete(lastStreamId);
-    }
-
-    res.status(500).json({
-      error: 'Failed to process message',
-      details: error.message
+          details: error.message
+        });
+      }
     });
-  }
-}));
 
-module.exports = router;
+    socket.on('disconnect', () => {
+      console.log('User disconnected from chat:', socket.id);
+    });
+  });
+};
