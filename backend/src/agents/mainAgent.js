@@ -1,5 +1,8 @@
 const { createAgent } = require("langchain");
 const { HumanMessage } = require("@langchain/core/messages");
+const fs = require('fs');
+const yaml = require('js-yaml');
+const path = require('path');
 const langchainService = require('../services/langchainService');
 const {
   callProductAgentTool,
@@ -30,35 +33,12 @@ class MainAgent {
 
       const model = langchainService.getChatModel();
 
+      const systemPrompt = fs.readFileSync(path.join(__dirname, 'prompts', 'mainAgent.yaml'), 'utf-8');
+      const systemPromptYaml = yaml.load(systemPrompt);
       this.agent = await createAgent({
         model,
         tools,
-        systemPrompt: `You are a skincare AI assistant. Your task is to help users find and buy skincare products. You can use tools to retrieve product information and provide accurate recommendations. Always be concise, clear, and accurate.
-
-        Guidelines:
-        1. You will handle only skincare products.
-        2. Use tools whenever needed to get product details.
-        3. Normally, at the end of your response, send your message to the UI using send_message_tool so it can display your response.
-        4. Normally you will check message template using get_message_template_tool and then send your message to the UI using send_message_tool .
-        4. If multiple messages are needed, you can call send_message_tool multiple times.
-        5. Be smart in structuring your responses to provide helpful, actionable, and user-friendly guidance.
-        6. Do your best to fulfill user's request.
-        7. prefer to use message type product, suggested, loading, review as a response because it is more user-friendly.
-
-        Example workflow:
-        user : "에스트라 아토베리어365 크림 80ml 기획상품 찾아줘"
-        you : call product agent tool
-        product agent tool : return product information
-        you : call get_message_template_tool type product
-        get_message_template_tool : return product template
-        you : call get_message_template_tool type chatMessage
-        get_message_template_tool : return chatMessage template
-        you : call send_message_tool with product template
-        send_message_tool : send message to UI
-        you : call send_message_tool with chatMessage template
-        send_message_tool : send message to UI
-        
-        `,
+        systemPrompt: systemPromptYaml.systemPrompt
       });
 
       console.log('[MainAgent] Agent initialized successfully');
@@ -69,7 +49,7 @@ class MainAgent {
     }
   }
 
-  async execute(input) {
+  async execute(input, config = {}) {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -78,9 +58,10 @@ class MainAgent {
       console.log('[MainAgent] Executing with input:', input);
 
       const humanMessage = new HumanMessage(input.query || input);
+
       const result = await this.agent.invoke({
         messages: [humanMessage],
-      });
+      }, {streamMode: 'custom', ...config});
 
       console.log('[MainAgent] Execution completed');
 
@@ -109,7 +90,26 @@ class MainAgent {
 
   // Invoke method for chat endpoint
   async invoke(input) {
-    return this.execute(input);
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    try {
+      console.log('[MainAgent] Invoking with input:', input);
+
+      const humanMessage = new HumanMessage(input.userQuery || input);
+      const result = await this.agent.invoke({
+        messages: [humanMessage],
+      }, input.config || {});
+
+      console.log('[MainAgent] Invocation completed');
+
+      return result;
+
+    } catch (error) {
+      console.error('[MainAgent] Invocation error:', error);
+      throw error;
+    }
   }
 
 }

@@ -39,7 +39,7 @@ class ProductAgent {
     }
   }
 
-  async execute(input) {
+  async execute(input, config = {}) {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -49,10 +49,8 @@ class ProductAgent {
 
       const humanMessage = new HumanMessage(JSON.stringify(input));
       const result = await this.agent.invoke({
-        messages: [humanMessage],
-      }
-      );
-      console.log('[ProductAgent] result',result);
+        messages: [humanMessage]
+      }, config);
       if (!result.messages) {
         return "No response from agent";
       }
