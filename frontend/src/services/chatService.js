@@ -1,94 +1,77 @@
+import { io } from 'socket.io-client';
+
 class ChatService {
   constructor() {
-    this.eventSource = null;
+    this.socket = null;
     this.messageCallback = null;
     this.errorCallback = null;
     this.processCallback = null;
   }
 
   connect(onMessage, onError, onProcess) {
-    const url = 'http://localhost:3001/chat/stream'; // Backend SSE endpoint
+    const url = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'; // Backend Socket.IO server
 
     this.messageCallback = onMessage;
     this.errorCallback = onError;
     this.processCallback = onProcess;
 
     // Close existing connection if any
-    if (this.eventSource) {
-      this.eventSource.close();
+    if (this.socket) {
+      this.socket.disconnect();
     }
 
-    this.eventSource = new EventSource(url);
+    this.socket = io(url, {
+      transports: ['websocket', 'polling']
+    });
 
-    // Handle response messages (chat and product)
-    this.eventSource.addEventListener('response', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (this.messageCallback) {
-          this.messageCallback(data);
-        }
-      } catch (error) {
-        console.error('Failed to parse response message:', error);
+    // Handle response messages
+    this.socket.on('response', (data) => {
+      console.log('Received response:', JSON.stringify(data));
+      if (this.messageCallback) {
+        this.messageCallback(data.data);
       }
     });
 
-    // Handle product messages
-    this.eventSource.addEventListener('product', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (this.messageCallback) {
-          this.messageCallback(data);
-        }
-      } catch (error) {
-        console.error('Failed to parse product message:', error);
-      }
-    });
-
-    // Handle process messages
-    this.eventSource.addEventListener('process', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (this.processCallback) {
-          this.processCallback(data.content);
-        }
-      } catch (error) {
-        console.error('Failed to parse process message:', error);
-      }
-    });
+    // // Handle loading messages
+    // this.socket.on('loading', (data) => {
+    //   if (this.processCallback) {
+    //     this.processCallback(data.content);
+    //   }
+    // });
 
     // Handle errors
-    this.eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
+    this.socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
       if (this.errorCallback) {
         this.errorCallback(error);
       }
-    };
+    });
 
-    // Handle connection open
-    this.eventSource.onopen = () => {
-      console.log('SSE connection opened');
-    };
+    // Handle connection
+    this.socket.on('connect', () => {
+      console.log('Socket.IO connected');
+    });
+
+    this.socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected');
+    });
   }
 
   disconnect() {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
   }
 
   sendMessage(message) {
-    if (this.eventSource && this.eventSource.readyState === EventSource.OPEN) {
-      // Since SSE is one-way, we'll need to make a POST request to send the message
-      fetch('http://localhost:3001/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      }).catch(error => console.error('Failed to send message:', error));
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('chatMessage', { message });
     } else {
-      console.warn('EventSource not connected, cannot send message');
+      console.warn('Socket.IO not connected, cannot send message');
+      if (this.errorCallback) {
+        this.errorCallback(new Error('Socket not connected'));
+      }
     }
   }
 }
