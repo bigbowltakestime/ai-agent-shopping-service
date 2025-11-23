@@ -98,7 +98,13 @@ class DBInterface {
       if (!product) return null;
 
       const ingredients = product.ingredients ? JSON.parse(product.ingredients) : [];
-      const reviews = product.reviews ? JSON.parse(product.reviews) : [];
+      let reviews = [];
+      try {
+        reviews = product.reviews ? JSON.parse(product.reviews) : [];
+      } catch (e) {
+        // If reviews is not valid JSON, treat as array of strings or text
+        reviews = product.reviews ? [product.reviews] : [];
+      }
       return {
         ...product,
         rating: parseFloat(product.rating),
