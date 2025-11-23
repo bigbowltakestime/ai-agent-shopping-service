@@ -15,7 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=./data/database.db
+      - DATABASE_URL=./backend/data/database.db
     volumes:
-      - ./data:/app/data
+      - ./backend/data:/app/backend/data
     restart: unless-stopped
