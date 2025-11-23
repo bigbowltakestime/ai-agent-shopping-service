@@ -6,7 +6,6 @@ yarn-error.log*
 dist/
 build/
 coverage/
-.env
 .env.*.local
 
 # --- Python ---
@@ -15,7 +14,6 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.env/
 venv/
 .venv/
 
