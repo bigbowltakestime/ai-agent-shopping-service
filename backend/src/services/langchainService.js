@@ -1,5 +1,6 @@
 const { ChatOpenAI } = require('@langchain/openai');
 const { OpenAIEmbeddings } = require('@langchain/openai');
+const { StateGraph, START, END } = require('@langchain/langgraph');
 const config = require('../config/config');
 
 let chatModel;
@@ -17,11 +18,11 @@ class LangChainService {
       // Initialize Chat Model (GPT-4)
       chatModel = new ChatOpenAI({
         openAIApiKey: config.OPENAI_API_KEY,
-        modelName: 'gpt-4',
-        temperature: 0.1, // Low temperature for more deterministic responses
+        modelName: 'gpt-4o-mini',
+        temperature: 1, // Low temperature for more deterministic responses
         maxTokens: 2000, // Limit response length
         maxRetries: 3,
-        timeout: 30000, // 30 seconds
+        timeout: 60000, // 60 seconds
       });
 
       // Initialize Embedding Model
@@ -83,28 +84,6 @@ class LangChainService {
       console.error('Chat completion error:', error);
       throw error;
     }
-  }
-
-  // Calculate Cosine Similarity
-  cosineSimilarity(vecA, vecB) {
-    const dotProduct = vecA.reduce((sum, a, idx) => sum + a * vecB[idx], 0);
-    const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-    const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
-  // Find Most Similar Embeddings
-  findMostSimilar(targetEmbedding, embeddings, limit = 5, minSimilarity = 0.1) {
-    const similarities = embeddings.map((emb, idx) => ({
-      index: idx,
-      similarity: this.cosineSimilarity(targetEmbedding, emb.embedding),
-      data: emb
-    }));
-
-    return similarities
-      .filter(item => item.similarity >= minSimilarity)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
   }
 
   // Cleanup and close connections

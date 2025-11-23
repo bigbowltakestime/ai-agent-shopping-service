@@ -7,7 +7,7 @@ class ChatService {
   }
 
   connect(onMessage, onError, onProcess) {
-    const url = 'http://localhost:3001/chat'; // Backend SSE endpoint
+    const url = 'http://localhost:3001/chat/stream'; // Backend SSE endpoint
 
     this.messageCallback = onMessage;
     this.errorCallback = onError;
@@ -20,15 +20,27 @@ class ChatService {
 
     this.eventSource = new EventSource(url);
 
-    // Handle chat messages
-    this.eventSource.addEventListener('chatmessage', (event) => {
+    // Handle response messages (chat and product)
+    this.eventSource.addEventListener('response', (event) => {
       try {
         const data = JSON.parse(event.data);
         if (this.messageCallback) {
           this.messageCallback(data);
         }
       } catch (error) {
-        console.error('Failed to parse chat message:', error);
+        console.error('Failed to parse response message:', error);
+      }
+    });
+
+    // Handle product messages
+    this.eventSource.addEventListener('product', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (this.messageCallback) {
+          this.messageCallback(data);
+        }
+      } catch (error) {
+        console.error('Failed to parse product message:', error);
       }
     });
 
