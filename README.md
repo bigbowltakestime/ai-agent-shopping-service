@@ -1,4 +1,15 @@
-## AI 쇼핑 어시스턴트 플랫폼 (MVP) 요약
+<div align="center">
+  <h2>🛍️ AI 쇼핑 어시스턴트 플랫폼 (MVP) 🛒</h2>
+  
+  <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin: 20px 0;">
+    <img src="./docs/images/screenshot1.png" width="45%" alt="Screenshot 1" />
+    <img src="./docs/images/screenshot2.png" width="45%" alt="Screenshot 2" />
+    <img src="./docs/images/screenshot3.png" width="45%" alt="Screenshot 3" />
+    <img src="./docs/images/screenshot4.png" width="45%" alt="Screenshot 4" />
+  </div>
+</div>
+
+## 프로젝트 개요
 
 본 프로젝트는 **AI 기반 쇼핑 어시스턴트의 최소 기능 제품(MVP)** 구현을 목표로 하였습니다.
 핵심 목적은 **대화 기반 제품 탐색 및 추천 경험**을 제공하는 것입니다.
